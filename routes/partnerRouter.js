@@ -1,45 +1,75 @@
 const express = require('express');
+const Partner = require('../models/partner');
+const authenticate = require('../authenticate');
 const partnerRouter = express.Router();
 
-partnerRouter.route('/')
-    .all((req, res, next) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/plain');
-        next();
+partnerRouter.route('/')    
+    .get((req, res, next) => {
+        Partner.find()
+            .then(partners => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(partners);
+            })
+            .catch(err => next(err));    
     })
-    .get((req, res) => {
-        res.end('Will send all the partners to you');
+    .post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+        Partner.create(req.body)
+            .then(partner => {
+                console.log('Partner Created ', partner);
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(partner);
     })
-    .post((req, res) => {
-        res.end(`Will add the partners: ${req.body.name} with description: ${req.body.description}`);
+    .catch(err => next(err));
     })
-    .put((req, res) => {
+    .put(authenticate.verifyUser, (req, res) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /partners');
     })
-    .delete((req, res) => {
-        res.end('Deleting all partners');
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+        Partner.deleteMany()
+            .then(response => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(response);
+        })
+        .catch(err => next(err));
     });
 
-partnerRouter.route('/:partnerId')
-    .all((req, res, next) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/plain');
-        next();
+partnerRouter.route('/:partnerId')    
+    .get((req, res, next) => {
+        Partner.findById(req.params.partnerId)
+            .then(partner => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(partner);
+        })
+        .catch(err => next(err));
     })
-    .get((req, res) => {
-        res.end(`Will send partner ${req.params.partnerId} to you`);
+    .post(authenticate.verifyUser, (req, res) => {
+        res.statusCode = 403;
+        res.end(`POST operation not supported on /partners/${req.params.partnerId}`);;
     })
-    .post((req, res) => {
-        res.end(`Will add the partner: ${req.params.partnerId} - ${req.body.name} with description: ${req.body.description}`);
+    .put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+        Partner.findByIdAndUpdate(req.params.partnerId, {
+            $set: req.body
+        }, { new: true })
+        .then(partner => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(partner);
+        })
+        .catch(err => next(err));
     })
-    .put((req, res) => {
-        // res.statusCode = 403;
-        // res.end(`PUT operation not supported on /partners/${req.params.partnerId}`);
-        res.end(`Updating partner: ${req.params.partnerId} to name: ${req.body.name} with description: ${req.body.description}`);
-    })
-    .delete((req, res) => {
-        res.end(`Deleting partner ${req.params.partnerId}`);
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+        Partner.findByIdAndDelete(req.params.partnerId)
+            .then(response => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.json(response);
+            })
+            .catch(err => next(err));
     });
 
 module.exports = partnerRouter;
